@@ -2,7 +2,7 @@ VENV_DIR = $(HOME)/.venv/prometheus
 PYTHON = $(VENV_DIR)/bin/python
 PIP = $(VENV_DIR)/bin/pip
 ANSIBLE_GALAXY = $(VENV_DIR)/bin/ansible-galaxy
-GALAXY_SERVER = https://reg-devops.tamin.ir/repository/galaxy.ansible.com/
+GALAXY_SERVER = https://your-registery/repository/galaxy.ansible.com/
 
 .PHONY: setup clean activate-help
 
