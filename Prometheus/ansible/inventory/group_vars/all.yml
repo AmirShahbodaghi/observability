@@ -15,7 +15,7 @@ thanos_query_endpoints:
   - "thanos-sidecar:10901"
 
 thanos_objstore_bucket: prometheus-thanos
-thanos_objstore_endpoint: minio.example.local:9000
+thanos_objstore_endpoint: example.local:9000
 thanos_objstore_access_key: REPLACE_ME
 thanos_objstore_secret_key: REPLACE_ME
 
