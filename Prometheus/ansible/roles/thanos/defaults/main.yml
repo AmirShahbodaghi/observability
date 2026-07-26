@@ -1,0 +1,11 @@
+---
+thanos_image: "pull-devops.tamin.ir/thanos/thanos:{{ thanos_version }}"
+
+thanos_docker_network: "host" 
+thanos_query_port: 9090
+thanos_sidecar_http_port: 10902
+thanos_sidecar_grpc_port: 10901
+
+thanos_query_endpoints: []
+
+

@@ -1,0 +1,8 @@
+type: S3
+config:
+  bucket: {{ thanos_objstore_bucket }}
+  endpoint: {{ thanos_objstore_endpoint }}
+  access_key: {{ thanos_objstore_access_key }}
+  secret_key: {{ thanos_objstore_secret_key }}
+  insecure: true
+  signature_version2: false

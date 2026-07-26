@@ -1,0 +1,15 @@
+[server]
+http_addr = 0.0.0.0
+http_port = {{ grafana_http_port }}
+domain = localhost
+enforce_domain = false
+root_url = http://localhost:{{ grafana_http_port }}
+
+[security]
+admin_user = {{ grafana_admin_user }}
+admin_password = {{ grafana_admin_password }}
+
+[paths]
+data = {{ grafana_data_dir }}
+logs = /var/log/grafana
+plugins = /var/lib/grafana/plugins

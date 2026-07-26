@@ -1,0 +1,47 @@
+---
+- name: Ensure Docker monitoring network exists
+  community.docker.docker_network:
+    name: "{{ thanos_docker_network }}"
+    state: present
+
+- name: Ensure Prometheus config directory exists
+  ansible.builtin.file:
+    path: "{{ prometheus_config_dir }}"
+    state: directory
+    owner: "65534"
+    group: "65534"
+    mode: '0755'
+
+- name: Ensure Prometheus data directory exists
+  ansible.builtin.file:
+    path: "{{ prometheus_data_dir }}"
+    state: directory
+    owner: "65534"
+    group: "65534"
+    mode: '0755'
+
+- name: Deploy Prometheus configuration file
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ prometheus_config_dir }}/prometheus.yml"
+    owner: "65534"
+    group: "65534"
+    mode: '0644'
+
+- name: Deploy Prometheus Docker container
+  community.docker.docker_container:
+    name: "{{ prometheus_container_name }}"
+    image: "{{ prometheus_image }}:v{{ prometheus_version }}"
+    state: started
+    restart_policy: always
+    network_mode: "{{ thanos_docker_network }}"
+    published_ports:
+      - "{{ prometheus_port }}:9090"
+    volumes:
+      - "{{ prometheus_config_dir }}/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+      - "{{ prometheus_data_dir }}:/prometheus"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time={{ prometheus_retention }}'
+      - '--web.enable-lifecycle'

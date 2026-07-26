@@ -1,0 +1,20 @@
+[Unit]
+Description=Thanos Sidecar for Prometheus
+Wants=network-online.target prometheus.service
+After=network-online.target prometheus.service
+
+[Service]
+User={{ thanos_user }}
+Group={{ thanos_group }}
+Type=simple
+ExecStart={{ thanos_install_dir }}/thanos sidecar \
+  --tsdb.path={{ prometheus_data_dir }} \
+  --prometheus.url=http://localhost:9090 \
+  --objstore.config-file={{ thanos_config_dir }}/objstore.yml \
+  --http-address=0.0.0.0:{{ thanos_sidecar_http_port }}
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

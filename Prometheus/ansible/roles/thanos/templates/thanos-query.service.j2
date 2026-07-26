@@ -1,0 +1,20 @@
+[Unit]
+Description=Thanos Query
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User={{ thanos_user }}
+Group={{ thanos_group }}
+Type=simple
+ExecStart={{ thanos_install_dir }}/thanos query \
+  --http-address=0.0.0.0:{{ thanos_query_port }} \
+  --query.default-interval=1m{% for host in groups['prometheus'] %} \
+  --store={{ hostvars[host].ansible_host | default(host) }}:{{ thanos_sidecar_http_port }}{% endfor %}
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,11 @@
+# Core Ansible engine
+ansible-core>=2.15.0,<2.22.0
+
+# Python SDK for managing Docker containers/networks (required by community.docker collection)
+docker>=7.0.0
+
+# Security and parsing essentials required by Ansible/Docker
+cryptography>=41.0.0
+PyYAML>=6.0
+Jinja2>=3.1.0
+requests>=2.31.0

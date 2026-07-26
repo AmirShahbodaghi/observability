@@ -1,0 +1,22 @@
+---
+- name: Deploy Prometheus and Thanos
+  hosts: prometheus
+  become: true
+  gather_facts: yes
+  any_errors_fatal: true
+  roles:
+    - role: prometheus
+      tags: [prometheus]
+    - role: thanos
+      tags: [thanos]
+
+- name: Deploy Grafana and Thanos Query
+  hosts: grafana
+  become: true
+  gather_facts: yes
+  any_errors_fatal: true
+  roles:
+    - role: grafana
+      tags: [grafana]
+
+  

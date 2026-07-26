@@ -1,0 +1,50 @@
+---
+- name: Ensure Docker monitoring network exists
+  community.docker.docker_network:
+    name: "{{ thanos_docker_network }}"
+    state: present
+
+- name: Ensure Grafana directories exist on host
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "472"
+    group: "472"
+    mode: "0755"
+  loop:
+    - "{{ grafana_config_dir }}"
+    - "{{ grafana_config_dir }}/provisioning/datasources"
+    - "{{ grafana_data_dir }}"
+
+- name: Deploy Grafana configuration
+  ansible.builtin.template:
+    src: grafana.ini.j2
+    dest: "{{ grafana_config_dir }}/grafana.ini"
+    owner: "472"
+    group: "472"
+    mode: "0644"
+
+- name: Deploy Grafana Prometheus datasource provisioning
+  ansible.builtin.template:
+    src: datasource.yml.j2
+    dest: "{{ grafana_config_dir }}/provisioning/datasources/prometheus.yml"
+    owner: "472"
+    group: "472"
+    mode: "0644"
+
+- name: Run Grafana Docker container
+  community.docker.docker_container:
+    name: "{{ grafana_container_name }}"
+    image: "{{ grafana_image }}:{{ grafana_version }}"
+    state: started
+    restart_policy: unless-stopped
+    network_mode: "{{ thanos_docker_network }}"
+    published_ports:
+      - "{{ grafana_http_port }}:3000"
+    volumes:
+      - "{{ grafana_config_dir }}/grafana.ini:/etc/grafana/grafana.ini:ro"
+      - "{{ grafana_config_dir }}/provisioning:/etc/grafana/provisioning:ro"
+      - "{{ grafana_data_dir }}:/var/lib/grafana:rw"
+    env:
+      GF_SECURITY_ADMIN_USER: "{{ grafana_admin_user }}"
+      GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"

@@ -1,0 +1,36 @@
+prometheus_version: "2.47.0"
+thanos_version: "v0.42.2"
+grafana_version: "10.1.0"
+
+prometheus_container_name: "prometheus"
+prometheus_port: 9090
+prometheus_scrape_interval: 15s
+prometheus_retention: "30d"
+
+thanos_query_port: 10902
+thanos_sidecar_http_port: 10902
+thanos_sidecar_grpc_port: 10901
+thanos_docker_network: "monitoring"
+thanos_query_endpoints:
+  - "thanos-sidecar:10901"
+
+thanos_objstore_bucket: prometheus-thanos
+thanos_objstore_endpoint: minio.example.local:9000
+thanos_objstore_access_key: REPLACE_ME
+thanos_objstore_secret_key: REPLACE_ME
+
+grafana_container_name: "grafana"
+grafana_http_port: 3000
+grafana_admin_user: admin
+grafana_admin_password: admin
+grafana_datasource_name: Prometheus-HA
+grafana_datasource_url: "http://thanos-query:10902"
+
+prometheus_config_dir: /opt/prometheus/etc/prometheus
+prometheus_data_dir: /opt/prometheus/var/lib/prometheus
+
+thanos_config_dir: /opt/thanos/etc/thanos
+thanos_data_dir: /opt/thanos/var/lib/thanos
+
+grafana_data_dir: "/opt/grafana/var/lib/grafana"
+grafana_config_dir: "/opt/grafana/etc/grafana"

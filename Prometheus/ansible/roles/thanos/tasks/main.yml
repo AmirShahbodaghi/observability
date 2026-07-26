@@ -1,0 +1,74 @@
+---
+- name: Set Thanos enable flags
+  ansible.builtin.set_fact:
+    thanos_enable_sidecar: "{{ 'prometheus' in group_names }}"
+    thanos_enable_query: "{{ 'thanos_query' in group_names }}"
+
+- name: Fail when Thanos role is applied to an unsupported host
+  ansible.builtin.fail:
+    msg: "Thanos role must run on a host in the prometheus or thanos_query group."
+  when: not (thanos_enable_sidecar or thanos_enable_query)
+
+- name: Ensure Docker monitoring network exists
+  community.docker.docker_network:
+    name: "{{ thanos_docker_network }}"
+    state: present  
+
+- name: Ensure Thanos host directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ thanos_config_dir }}", mode: '0755' }
+    - { path: "{{ thanos_data_dir }}", mode: '0755' }
+
+- name: Deploy Thanos object store configuration
+  ansible.builtin.template:
+    src: thanos-objstore.yml.j2
+    dest: "{{ thanos_config_dir }}/objstore.yml"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Deploy Thanos Sidecar Container
+  community.docker.docker_container:
+    name: thanos-sidecar
+    image: "{{ thanos_image }}"
+    state: started
+    restart_policy: unless-stopped
+    network_mode: "{{ thanos_docker_network }}"
+    published_ports:
+      - "{{ thanos_sidecar_grpc_port }}:{{ thanos_sidecar_grpc_port }}"
+    volumes:
+      - "{{ thanos_config_dir }}:/etc/thanos:ro"
+      - "{{ prometheus_data_dir }}:/var/lib/prometheus:ro"
+    command:
+      - "sidecar"
+      - "--http-address=0.0.0.0:{{ thanos_sidecar_http_port }}"
+      - "--grpc-address=0.0.0.0:{{ thanos_sidecar_grpc_port }}"
+      - "--prometheus.url=http://{{ prometheus_container_name }}:9090"
+      - "--tsdb.path=/var/lib/prometheus"
+      - "--objstore.config-file=/etc/thanos/objstore.yml"
+  when: thanos_enable_sidecar
+
+- name: Deploy Thanos Query Container
+  community.docker.docker_container:
+    name: thanos-query
+    image: "{{ thanos_image }}"
+    state: started
+    restart_policy: unless-stopped
+    network_mode: "{{ thanos_docker_network }}"
+    published_ports:
+      - "{{ thanos_query_port }}:10902"
+    command: >-
+      query
+      --http-address=0.0.0.0:10902
+      {% for host in groups['prometheus'] %}
+      --endpoint={{ hostvars[host]['ansible_host'] }}:{{ thanos_sidecar_grpc_port }}
+      {% endfor %}
+  when: thanos_enable_query
+  
+
