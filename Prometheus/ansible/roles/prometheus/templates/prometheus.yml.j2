@@ -13,4 +13,11 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
+  - job_name: "redis_exporter"
+    static_configs:
+      - targets:
+          - "redis-server-1:1394"
+          - "redis-server-2:1394"
+          - "redis-server-3:1394"
 
+          
