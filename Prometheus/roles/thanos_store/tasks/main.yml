@@ -1,0 +1,47 @@
+---
+- name: Ensure monitoring network exists
+  community.docker.docker_network:
+    name: "{{ monitoring_network }}"
+    state: present
+
+- name: Ensure Thanos Store directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "65534"
+    group: "65534"
+    mode: "0755"
+  loop:
+    - "{{ thanos_store_config_dir }}"
+    - "{{ thanos_store_data_dir }}"
+
+- name: Deploy Thanos object store configuration
+  ansible.builtin.template:
+    src: objstore.yml.j2
+    dest: "{{ thanos_store_config_dir }}/objstore.yml"
+    owner: "65534" 
+    group: "65534" 
+    mode: "0600"
+  notify: Restart Thanos Store
+
+- name: Deploy Thanos Store Gateway
+  community.docker.docker_container:
+    name: "{{ thanos_store_container_name }}"
+    image: "{{ thanos_store_image }}:{{ thanos_store_version }}"
+    user: "{{ thanos_user }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ monitoring_network }}"
+    published_ports:
+      - "{{ thanos_store_http_port }}:{{ thanos_store_http_container_port }}"
+      - "{{ thanos_store_grpc_port }}:{{ thanos_store_grpc_container_port }}"
+    volumes:
+      - "{{ thanos_store_config_dir }}:/etc/thanos:ro"
+      - "{{ thanos_store_data_dir }}:/var/thanos/store:rw"
+    command:
+      - store
+      - "--http-address={{ thanos_store_http_address }}"
+      - "--grpc-address={{ thanos_store_grpc_address }}"
+      - "--data-dir=/var/thanos/store"
+      - "--objstore.config-file=/etc/thanos/objstore.yml"

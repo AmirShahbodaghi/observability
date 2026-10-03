@@ -1,0 +1,39 @@
+---
+- name: WARNING - Destroy monitoring data
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: Remove Prometheus data
+      ansible.builtin.file:
+        path: "{{ prometheus_data_dir }}"
+        state: absent
+      when:
+        - "'prometheus' in group_names"
+        - prometheus_data_dir is defined
+
+    - name: Remove Thanos data
+      ansible.builtin.file:
+        path: "{{ thanos_data_dir }}"
+        state: absent
+      when:
+        - "'prometheus' in group_names"
+        - thanos_data_dir is defined
+
+    - name: Remove Grafana data
+      ansible.builtin.file:
+        path: "{{ grafana_data_dir }}"
+        state: absent
+      when:
+        - "'grafana' in group_names"
+        - grafana_data_dir is defined
+
+    - name: Remove Tempo data
+      ansible.builtin.file:
+        path: "{{ tempo_data_dir | default('') }}"
+        state: absent
+      when:
+        - "'tempo' in group_names"
+        - tempo_data_dir is defined

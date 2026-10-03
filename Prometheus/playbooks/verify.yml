@@ -1,0 +1,91 @@
+---
+- name: Verify Prometheus
+  hosts: prometheus
+  gather_facts: false
+  tags: [prometheus]
+  tasks:
+    - ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ prometheus_port }}/-/healthy"
+        status_code: 200
+      register: _v
+      retries: 10
+      delay: 3
+      until: _v.status == 200
+
+- name: Verify Thanos Sidecar
+  hosts: thanos_sidecar
+  gather_facts: false
+  tags: [thanos_sidecar]
+  tasks:
+    - ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ thanos_sidecar_http_port }}/-/healthy"
+        status_code: 200
+      register: _v
+      retries: 10
+      delay: 3
+      until: _v.status == 200
+
+- name: Verify Thanos Store
+  hosts: thanos_store
+  gather_facts: false
+  tags: [thanos_store]
+  tasks:
+    - ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ thanos_store_http_port }}/-/healthy"
+        status_code: 200
+      register: _v
+      retries: 10
+      delay: 3
+      until: _v.status == 200
+
+- name: Verify Thanos Compactor
+  hosts: thanos_compactor
+  gather_facts: false
+  tags: [thanos_compactor]
+  tasks:
+    - ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ thanos_compactor_http_port }}/-/healthy"
+        status_code: 200
+      register: _v
+      retries: 10
+      delay: 3
+      until: _v.status == 200
+
+- name: Verify Thanos Query
+  hosts: thanos_query
+  gather_facts: false
+  tags: [thanos_query]
+  tasks:
+    - ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ thanos_query_http_port }}/-/healthy"
+        status_code: 200
+      register: _v
+      retries: 10
+      delay: 3
+      until: _v.status == 200
+
+- name: Verify Grafana
+  hosts: grafana
+  gather_facts: false
+  tags: [grafana]
+  tasks:
+    - ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ grafana_http_port }}/api/health"
+        status_code: 200
+      register: _v
+      retries: 10
+      delay: 3
+      until: _v.status == 200
+
+- name: Verify Tempo
+  hosts: tempo
+  gather_facts: false
+  tags: [tempo]
+  tasks:
+    - ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ tempo_http_port }}/ready"
+        status_code: 200
+      register: _v
+      retries: 10
+      delay: 3
+      until: _v.status == 200

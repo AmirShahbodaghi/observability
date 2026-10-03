@@ -1,0 +1,83 @@
+---
+- name: Ensure monitoring network exists
+  community.docker.docker_network:
+    name: "{{ monitoring_network }}"
+    state: present
+
+- name: Ensure Thanos Sidecar directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "65534"
+    group: "65534"
+    mode: "0755"
+  loop:
+    - "{{ thanos_sidecar_config_dir }}"
+    - "{{ thanos_sidecar_data_dir }}"
+
+- name: Fail if S3 is enabled but keys are placeholders
+  ansible.builtin.assert:
+    that:
+      - thanos_objstore_access_key | length > 0
+      - thanos_objstore_secret_key | length > 0
+      - thanos_objstore_access_key != "CHANGE_ME"
+      - thanos_objstore_secret_key != "CHANGE_ME"
+    fail_msg: >-
+      thanos_enable_objstore is true but S3 keys are empty or CHANGE_ME.
+      Set thanos_objstore_access_key and thanos_objstore_secret_key in
+      inventory/group_vars/all.yml, or set thanos_enable_objstore: false.
+  when: thanos_enable_objstore | bool
+
+- name: Deploy Thanos object store configuration
+  ansible.builtin.template:
+    src: objstore.yml.j2
+    dest: "{{ thanos_sidecar_config_dir }}/objstore.yml"
+    owner: "65534"
+    group: "65534"
+    mode: "0600"
+  notify: Restart Thanos Sidecar
+  when: thanos_enable_objstore | bool
+
+- name: Build Thanos Sidecar command
+  ansible.builtin.set_fact:
+    thanos_sidecar_cmd: "{{ _base + _ship + _obj }}"
+  vars:
+    _base:
+      - sidecar
+      - "--http-address=0.0.0.0:{{ thanos_sidecar_http_container_port }}"
+      - "--grpc-address=0.0.0.0:{{ thanos_sidecar_grpc_container_port }}"
+      - "--prometheus.url={{ thanos_sidecar_prometheus_url }}"
+      - "--tsdb.path={{ thanos_sidecar_tsdb_path }}"
+    _ship: "{{ ['--shipper.upload-compacted'] if (thanos_enable_objstore | bool and thanos_sidecar_shipper_upload_compacted | bool) else [] }}"
+    _obj: "{{ ['--objstore.config-file=/etc/thanos/objstore.yml'] if thanos_enable_objstore | bool else [] }}"
+
+- name: Deploy Thanos Sidecar
+  community.docker.docker_container:
+    name: "{{ thanos_sidecar_container_name }}"
+    image: "{{ thanos_sidecar_image }}:{{ thanos_sidecar_version }}"
+    user: "{{ thanos_user | default('65534:65534') }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ monitoring_network }}"
+    published_ports:
+      - "{{ thanos_sidecar_http_port }}:{{ thanos_sidecar_http_container_port }}"
+      - "{{ thanos_sidecar_grpc_port }}:{{ thanos_sidecar_grpc_container_port }}"
+    volumes: "{{ _volumes }}"
+    command: "{{ thanos_sidecar_cmd }}"
+  vars:
+    _volumes: "{{ _base_vols + _obj_vol }}"
+    _base_vols:
+      - "{{ prometheus_data_dir }}:/prometheus:rw"
+      - "{{ thanos_sidecar_data_dir }}:/var/thanos:rw"
+    _obj_vol: "{{ [thanos_sidecar_config_dir ~ ':/etc/thanos:ro'] if thanos_enable_objstore | bool else [] }}"
+
+- name: Wait until Thanos Sidecar is healthy
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ thanos_sidecar_http_port }}/-/healthy"
+    method: GET
+    status_code: 200
+  register: thanos_sidecar_health
+  retries: 30
+  delay: 2
+  until: thanos_sidecar_health.status | default(0) == 200

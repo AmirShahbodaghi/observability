@@ -1,0 +1,250 @@
+{{ ansible_managed | comment }}
+global:
+  scrape_interval: {{ prometheus_scrape_interval | default('15s') }}
+  evaluation_interval: {{ prometheus_scrape_interval | default('15s') }}
+  external_labels:
+    cluster: "{{ prometheus_cluster_label | default('prometheus-cluster') }}"
+    replica: "{{ replica_name | default(inventory_hostname) }}"
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: {{ [prometheus_container_name ~ ':9090'] | to_json }}
+        labels:
+          instance: "{{ replica_name | default(inventory_hostname) }}"
+
+  - job_name: thanos-sidecar
+    static_configs:
+      - targets: {{ [thanos_sidecar_container_name ~ ':' ~ (thanos_sidecar_http_container_port | string)] | to_json }}
+
+{% set _query = [] %}
+{% for h in groups['thanos_query'] | default([]) %}
+{%   set _ = _query.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (thanos_query_http_port | string)) %}
+{% endfor %}
+{% if _query | length > 0 %}
+  - job_name: thanos-query
+    static_configs:
+      - targets: {{ _query | to_json }}
+{% endif %}
+
+{% set _store = [] %}
+{% for h in groups['thanos_store'] | default([]) %}
+{%   set _ = _store.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (thanos_store_http_port | string)) %}
+{% endfor %}
+{% if _store | length > 0 %}
+  - job_name: thanos-store
+    static_configs:
+      - targets: {{ _store | to_json }}
+{% endif %}
+
+{% set _compact = [] %}
+{% for h in groups['thanos_compactor'] | default([]) %}
+{%   set _ = _compact.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (thanos_compactor_http_port | string)) %}
+{% endfor %}
+{% if _compact | length > 0 %}
+  - job_name: thanos-compact
+    static_configs:
+      - targets: {{ _compact | to_json }}
+{% endif %}
+
+{% set _grafana = [] %}
+{% for h in groups['grafana'] | default([]) %}
+{%   set _ = _grafana.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (grafana_http_port | string)) %}
+{% endfor %}
+{% if _grafana | length > 0 %}
+  - job_name: grafana
+    metrics_path: /metrics
+    static_configs:
+      - targets: {{ _grafana | to_json }}
+{% endif %}
+
+{% set _tempo = [] %}
+{% for h in groups['tempo'] | default([]) %}
+{%   set _ = _tempo.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (tempo_http_port | string)) %}
+{% endfor %}
+{% if _tempo | length > 0 %}
+  - job_name: tempo
+    static_configs:
+      - targets: {{ _tempo | to_json }}
+{% endif %}
+
+{# Extra jobs: define prometheus_additional_scrape_jobs in all.yml #}
+{% for job in prometheus_additional_scrape_jobs | default([]) %}
+  - job_name: "{{ job.job_name }}"
+    metrics_path: "{{ job.metrics_path | default('/metrics') }}"
+    scheme: "{{ job.scheme | default('http') }}"
+{% if job.scrape_interval is defined %}
+    scrape_interval: {{ job.scrape_interval }}
+{% endif %}
+    static_configs:
+      - targets: {{ job.targets | to_json }}
+{% if job.labels is defined %}
+        labels:
+{% for k, v in job.labels.items() %}
+          {{ k }}: "{{ v }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+  - job_name: file-sd
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/file_sd/*.yml
+        refresh_interval: 5m
+
+  - job_name: "redis_exporter"
+    static_configs:
+      - targets:
+        - "172.16.5.138:9121"
+        - "172.16.5.138:9122"
+        - "172.16.5.138:9123"
+        - "172.16.5.138:9124"
+        - "172.16.5.146:1394"
+        - "172.16.5.147:1394"
+        - "172.16.5.148:1394" 
+        - "172.18.6.78:9121"
+          
+  - job_name: 'gitlab-node'
+    static_configs:
+      - targets:
+        - "172.18.6.78:9100"   
+
+  - job_name: 'gitlab-workhorse'
+    static_configs:
+      - targets:
+        - "172.18.6.78:9168"
+
+  - job_name: 'gitlab-runners'
+    static_configs:
+      - targets:
+        - "172.16.5.134:9252"
+        - "172.16.5.134:9253"
+        - "172.16.5.134:9254"
+
+  - job_name: 'gitlab-pipeline'
+    static_configs:
+      - targets:
+        - "172.16.5.134:8080"        
+
+  - job_name: 'haproxy'
+    static_configs:
+      - targets:
+        - "172.16.5.137:8404"
+        - "172.16.5.145:8404"
+
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets:
+        - "172.16.5.146:7308"
+        - "172.16.5.146:8308"
+        - "172.16.5.146:9308"       
+        - "172.16.5.147:7308"
+        - "172.16.5.147:8308"
+        - "172.16.5.147:9308"
+        - "172.16.5.148:7308"
+        - "172.16.5.148:8308"
+        - "172.16.5.148:9308"
+    
+  - job_name: "nexus-repository-manager"
+    metrics_path: /service/rest/metrics/prometheus
+    static_configs:
+      - targets:
+        - "172.16.5.135:8081"
+    basic_auth:
+      username: admin
+      password_file: /etc/prometheus/nexus-password
+
+  - job_name: "k8s-node-exporter-test"
+    static_configs:
+      - targets:
+        - "172.16.5.132:9100"
+        - "172.16.5.133:9100"
+        - "172.16.5.161:9100"
+        - "172.16.5.162:9100"
+        - "172.16.5.129:9100"
+        - "172.16.5.130:9100"
+        - "172.16.5.131:9100"
+
+  - job_name: "kube-state-metrics-test"
+    static_configs:
+      - targets:
+        - "172.16.5.162:30180"
+
+  - job_name: "k8s-cadvisor-test"
+    scheme: https
+    metrics_path: /metrics/cadvisor
+    tls_config:
+      insecure_skip_verify: true
+    bearer_token_file: /etc/prometheus/k8s-token.token
+    static_configs:
+      - targets:
+        - "172.16.5.129:10250"
+        - "172.16.5.130:10250"
+        - "172.16.5.131:10250"
+        - "172.16.5.132:10250"
+        - "172.16.5.133:10250"
+        - "172.16.5.161:10250"
+        - "172.16.5.162:10250"
+
+  - job_name: "beyla-test"
+    static_configs:
+      - targets:
+        - "172.16.5.132:30090"
+        - "172.16.5.133:30090"
+        - "172.16.5.161:30090"
+        - "172.16.5.162:30090"
+        - "172.16.5.129:30090"
+        - "172.16.5.130:30090"
+        - "172.16.5.131:30090"    
+
+  - job_name: "k8s-node-exporter-prod"
+    static_configs:
+      - targets:
+        - "172.16.5.168:9100"
+        - "172.16.5.169:9100"
+        - "172.16.5.170:9100"
+        - "172.16.5.174:9100"
+        - "172.16.5.175:9100"
+        - "172.16.5.176:9100"
+        - "172.16.5.177:9100"
+
+  - job_name: "kube-state-metrics-prod"
+    static_configs:
+      - targets:
+        - "172.16.5.168:30180"
+        - "172.16.5.169:30180"
+        - "172.16.5.170:30180"
+        - "172.16.5.174:30180"
+        - "172.16.5.175:30180"
+        - "172.16.5.176:30180"
+        - "172.16.5.177:30180"
+
+  - job_name: "k8s-cadvisor-prod"
+    scheme: https
+    metrics_path: /metrics/cadvisor
+    tls_config:
+      insecure_skip_verify: true
+    bearer_token_file: /etc/prometheus/pk8s-token.token
+    static_configs:
+      - targets:
+        - "172.16.5.168:10250"
+        - "172.16.5.169:10250"
+        - "172.16.5.170:10250"
+        - "172.16.5.174:10250"
+        - "172.16.5.175:10250"
+        - "172.16.5.176:10250"
+        - "172.16.5.177:10250"
+
+  - job_name: "beyla-prod"
+    static_configs:
+      - targets:
+        - "172.16.5.168:30090"
+        - "172.16.5.169:30090"
+        - "172.16.5.170:30090"
+        - "172.16.5.174:30090"
+        - "172.16.5.175:30090"
+        - "172.16.5.176:30090"
+        - "172.16.5.177:30090"

@@ -1,0 +1,63 @@
+---
+- name: Deploy Prometheus
+  hosts: prometheus
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  tags: [prometheus]
+  roles:
+    - prometheus
+
+- name: Deploy Thanos Sidecar
+  hosts: thanos_sidecar
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  tags: [thanos_sidecar]
+  roles:
+    - thanos_sidecar
+
+- name: Deploy Thanos Store Gateway
+  hosts: thanos_store
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  tags: [thanos_store]
+  roles:
+    - thanos_store
+
+- name: Deploy Thanos Compactor
+  hosts: thanos_compactor
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  tags: [thanos_compactor]
+  roles:
+    - thanos_compactor
+
+- name: Deploy Thanos Query
+  hosts: thanos_query
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  tags: [thanos_query]
+  roles:
+    - thanos_query
+
+- name: Deploy Grafana
+  hosts: grafana
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  tags: [grafana]
+  roles:
+    - grafana
+
+- name: Deploy Tempo
+  hosts: tempo
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  tags: [tempo]
+  roles:
+    - tempo

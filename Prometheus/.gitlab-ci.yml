@@ -1,0 +1,179 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+      when: never
+
+stages:
+  - validate
+  - deploy_prometheus
+  - verify_prometheus
+  - deploy_thanos_sidecar
+  - verify_thanos_sidecar
+  - deploy_thanos_store
+  - verify_thanos_store
+  - deploy_thanos_compactor
+  - verify_thanos_compactor
+  - deploy_thanos_query
+  - verify_thanos_query
+  - deploy_grafana
+  - verify_grafana
+  - deploy_tempo
+  - verify_tempo
+  - final_verify
+  - lifecycle
+
+variables:
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+  ANSIBLE_CONFIG: ansible.cfg
+  ANSIBLE_INVENTORY: inventory/hosts.yml
+
+default:
+  before_script:
+    - ansible --version
+    - ansible-galaxy collection install -r requirements.yml
+
+# ---------- validate ----------
+validate:
+  stage: validate
+  script:
+    - ansible-playbook site.yml --syntax-check
+    - ansible-playbook playbooks/lifecycle.yml --syntax-check
+    - ansible-playbook playbooks/verify.yml --syntax-check
+
+# ---------- hidden templates ----------
+.deploy:
+  script:
+    - ansible-playbook site.yml --tags "${APP}" -i "$ANSIBLE_INVENTORY"
+
+.verify:
+  script:
+    - ansible-playbook playbooks/verify.yml --tags "${APP}" -i "$ANSIBLE_INVENTORY"
+
+.lifecycle:
+  stage: lifecycle
+  when: manual
+  script:
+    - ansible-playbook playbooks/lifecycle.yml
+      --tags "${APP}"
+      -e "service_action=${ACTION}"
+      -i "$ANSIBLE_INVENTORY"
+
+# ---------- prometheus ----------
+deploy_prometheus:
+  stage: deploy_prometheus
+  extends: .deploy
+  variables: { APP: prometheus }
+
+verify_prometheus:
+  stage: verify_prometheus
+  extends: .verify
+  variables: { APP: prometheus }
+
+prometheus_start:    { extends: .lifecycle, variables: { APP: prometheus, ACTION: start } }
+prometheus_stop:     { extends: .lifecycle, variables: { APP: prometheus, ACTION: stop } }
+prometheus_restart:  { extends: .lifecycle, variables: { APP: prometheus, ACTION: restart } }
+prometheus_reset:    { extends: .lifecycle, variables: { APP: prometheus, ACTION: reset } }
+
+# ---------- thanos sidecar ----------
+deploy_thanos_sidecar:
+  stage: deploy_thanos_sidecar
+  extends: .deploy
+  variables: { APP: thanos_sidecar }
+
+verify_thanos_sidecar:
+  stage: verify_thanos_sidecar
+  extends: .verify
+  variables: { APP: thanos_sidecar }
+
+thanos_sidecar_start:    { extends: .lifecycle, variables: { APP: thanos_sidecar, ACTION: start } }
+thanos_sidecar_stop:     { extends: .lifecycle, variables: { APP: thanos_sidecar, ACTION: stop } }
+thanos_sidecar_restart:  { extends: .lifecycle, variables: { APP: thanos_sidecar, ACTION: restart } }
+thanos_sidecar_reset:    { extends: .lifecycle, variables: { APP: thanos_sidecar, ACTION: reset } }
+
+# ---------- thanos store ----------
+deploy_thanos_store:
+  stage: deploy_thanos_store
+  extends: .deploy
+  variables: { APP: thanos_store }
+
+verify_thanos_store:
+  stage: verify_thanos_store
+  extends: .verify
+  variables: { APP: thanos_store }
+
+thanos_store_start:    { extends: .lifecycle, variables: { APP: thanos_store, ACTION: start } }
+thanos_store_stop:     { extends: .lifecycle, variables: { APP: thanos_store, ACTION: stop } }
+thanos_store_restart:  { extends: .lifecycle, variables: { APP: thanos_store, ACTION: restart } }
+thanos_store_reset:    { extends: .lifecycle, variables: { APP: thanos_store, ACTION: reset } }
+
+# ---------- thanos compactor ----------
+deploy_thanos_compactor:
+  stage: deploy_thanos_compactor
+  extends: .deploy
+  variables: { APP: thanos_compactor }
+
+verify_thanos_compactor:
+  stage: verify_thanos_compactor
+  extends: .verify
+  variables: { APP: thanos_compactor }
+
+thanos_compactor_start:    { extends: .lifecycle, variables: { APP: thanos_compactor, ACTION: start } }
+thanos_compactor_stop:     { extends: .lifecycle, variables: { APP: thanos_compactor, ACTION: stop } }
+thanos_compactor_restart:  { extends: .lifecycle, variables: { APP: thanos_compactor, ACTION: restart } }
+thanos_compactor_reset:    { extends: .lifecycle, variables: { APP: thanos_compactor, ACTION: reset } }
+
+# ---------- thanos query ----------
+deploy_thanos_query:
+  stage: deploy_thanos_query
+  extends: .deploy
+  variables: { APP: thanos_query }
+
+verify_thanos_query:
+  stage: verify_thanos_query
+  extends: .verify
+  variables: { APP: thanos_query }
+
+thanos_query_start:    { extends: .lifecycle, variables: { APP: thanos_query, ACTION: start } }
+thanos_query_stop:     { extends: .lifecycle, variables: { APP: thanos_query, ACTION: stop } }
+thanos_query_restart:  { extends: .lifecycle, variables: { APP: thanos_query, ACTION: restart } }
+thanos_query_reset:    { extends: .lifecycle, variables: { APP: thanos_query, ACTION: reset } }
+
+# ---------- grafana ----------
+deploy_grafana:
+  stage: deploy_grafana
+  extends: .deploy
+  variables: { APP: grafana }
+
+verify_grafana:
+  stage: verify_grafana
+  extends: .verify
+  variables: { APP: grafana }
+
+grafana_start:    { extends: .lifecycle, variables: { APP: grafana, ACTION: start } }
+grafana_stop:     { extends: .lifecycle, variables: { APP: grafana, ACTION: stop } }
+grafana_restart:  { extends: .lifecycle, variables: { APP: grafana, ACTION: restart } }
+grafana_reset:    { extends: .lifecycle, variables: { APP: grafana, ACTION: reset } }
+
+# ---------- tempo ----------
+deploy_tempo:
+  stage: deploy_tempo
+  extends: .deploy
+  variables: { APP: tempo }
+
+verify_tempo:
+  stage: verify_tempo
+  extends: .verify
+  variables: { APP: tempo }
+
+tempo_start:    { extends: .lifecycle, variables: { APP: tempo, ACTION: start } }
+tempo_stop:     { extends: .lifecycle, variables: { APP: tempo, ACTION: stop } }
+tempo_restart:  { extends: .lifecycle, variables: { APP: tempo, ACTION: restart } }
+tempo_reset:    { extends: .lifecycle, variables: { APP: tempo, ACTION: reset } }
+
+# ---------- final ----------
+final_verify:
+  stage: final_verify
+  script:
+    - ansible-playbook playbooks/verify.yml -i "$ANSIBLE_INVENTORY"

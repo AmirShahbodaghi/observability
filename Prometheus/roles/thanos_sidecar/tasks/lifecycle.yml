@@ -1,0 +1,7 @@
+---
+- name: Thanos Sidecar {{ service_action }}
+  community.docker.docker_container:
+    name: "{{ thanos_sidecar_container_name }}"
+    state: "{{ 'stopped' if service_action == 'stop' else 'started' }}"
+    restart: "{{ true if service_action == 'restart' else omit }}"
+    recreate: "{{ true if service_action == 'reset' else omit }}"

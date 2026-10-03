@@ -1,0 +1,7 @@
+- name: Restart Tempo
+  community.docker.docker_container:
+    name: "{{ tempo_container_name }}"
+    state: started
+    restart: true
+
+    

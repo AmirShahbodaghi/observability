@@ -1,3 +1,0 @@
----
-grafana_image: "your-registery/grafana/grafana-oss"
-grafana_container_name: "grafana"

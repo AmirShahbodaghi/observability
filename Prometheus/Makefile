@@ -1,29 +1,24 @@
-VENV_DIR = $(HOME)/.venv/prometheus
-PYTHON = $(VENV_DIR)/bin/python
-PIP = $(VENV_DIR)/bin/pip
-ANSIBLE_GALAXY = $(VENV_DIR)/bin/ansible-galaxy
-GALAXY_SERVER = https://your-registery/repository/galaxy.ansible.com/
+INV := inventory/hosts.yml
 
-.PHONY: setup clean activate-help
+deploy-%:
+	ansible-playbook site.yml --tags $* -i $(INV)
 
-# Default target runs setup
-setup: $(VENV_DIR)/bin/activate
+verify-%:
+	ansible-playbook playbooks/verify.yml --tags $* -i $(INV)
 
-$(VENV_DIR)/bin/activate: requirements.txt
-	@echo "==> Creating Virtualenv..."
-	python3 -m venv $(VENV_DIR)
-	@echo "==> Upgrading Pip..."
-	$(PIP) install -U pip
-	@echo "==> Installing Requirements..."
-	$(PIP) install -r requirements.txt
-	@echo "==> Installing Ansible Collections..."
-	@if [ -f requirements.yml ]; then \
-		$(ANSIBLE_GALAXY) collection install -r requirements.yml --server $(GALAXY_SERVER); \
-# 	else \
-# 		$(ANSIBLE_GALAXY) collection install community.docker --server $(GALAXY_SERVER); \
-# 	fi
-	@echo "==> Setup finished!"
+start-%:
+	ansible-playbook playbooks/lifecycle.yml --tags $* -e service_action=start -i $(INV)
 
-clean:
-	@echo "==> Removing Virtualenv..."
-	rm -rf $(VENV_DIR)
+stop-%:
+	ansible-playbook playbooks/lifecycle.yml --tags $* -e service_action=stop -i $(INV)
+
+restart-%:
+	ansible-playbook playbooks/lifecycle.yml --tags $* -e service_action=restart -i $(INV)
+
+reset-%:
+	ansible-playbook playbooks/lifecycle.yml --tags $* -e service_action=reset -i $(INV)
+
+syntax:
+	ansible-playbook site.yml --syntax-check
+	ansible-playbook playbooks/lifecycle.yml --syntax-check
+	ansible-playbook playbooks/verify.yml --syntax-check

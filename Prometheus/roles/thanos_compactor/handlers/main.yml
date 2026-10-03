@@ -1,0 +1,6 @@
+---
+- name: Restart Thanos Compactor
+  community.docker.docker_container:
+    name: "{{ thanos_compactor_container_name }}"
+    state: started
+    restart: true

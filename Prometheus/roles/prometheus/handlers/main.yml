@@ -1,0 +1,24 @@
+---
+- name: Wait for Prometheus HTTP
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ prometheus_port }}/-/healthy"
+    method: GET
+    status_code: 200
+  register: prometheus_ready
+  retries: 30
+  delay: 2
+  until: prometheus_ready.status | default(0) == 200
+  listen: Reload Prometheus
+  when: not (prometheus_container.changed | default(false))
+
+- name: Reload Prometheus
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ prometheus_port }}/-/reload"
+    method: POST
+    status_code: [200, 204]
+  register: prometheus_reload
+  retries: 5
+  delay: 2
+  until: prometheus_reload.status | default(0) in [200, 204]
+  listen: Reload Prometheus
+  when: not (prometheus_container.changed | default(false))

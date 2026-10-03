@@ -1,0 +1,6 @@
+---
+- name: Restart Thanos Sidecar
+  community.docker.docker_container:
+    name: "{{ thanos_sidecar_container_name }}"
+    state: started
+    restart: true

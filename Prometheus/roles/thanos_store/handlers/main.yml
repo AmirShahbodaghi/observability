@@ -1,0 +1,6 @@
+---
+- name: Restart Thanos Store
+  community.docker.docker_container:
+    name: "{{ thanos_store_container_name }}"
+    state: started
+    restart: true

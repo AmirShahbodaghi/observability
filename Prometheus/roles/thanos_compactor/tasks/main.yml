@@ -1,0 +1,50 @@
+---
+- name: Ensure monitoring network exists
+  community.docker.docker_network:
+    name: "{{ monitoring_network }}"
+    state: present
+
+- name: Ensure Thanos Compactor directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "65534"
+    group: "65534"
+    mode: "0755"
+  loop:
+    - "{{ thanos_compactor_config_dir }}"
+    - "{{ thanos_compactor_data_dir }}"
+
+- name: Deploy Thanos object store configuration
+  ansible.builtin.template:
+    src: objstore.yml.j2
+    dest: "{{ thanos_compactor_config_dir }}/objstore.yml"
+    owner: "65534"  
+    group: "65534"
+    mode: "0600"
+  notify: Restart Thanos Compactor
+
+- name: Deploy Thanos Compactor
+  community.docker.docker_container:
+    name: "{{ thanos_compactor_container_name }}"
+    image: "{{ thanos_compactor_image }}:{{ thanos_compactor_version }}"
+    user: "{{ thanos_user }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ monitoring_network }}"
+    published_ports:
+      - "{{ thanos_compactor_http_port }}:{{ thanos_compactor_http_container_port }}"
+    volumes:
+      - "{{ thanos_compactor_config_dir }}:/etc/thanos:ro"
+      - "{{ thanos_compactor_data_dir }}:/var/thanos/compact:rw"
+    command:
+      - compact
+      - "--http-address={{ thanos_compactor_http_address }}"
+      - "--data-dir=/var/thanos/compact"
+      - "--objstore.config-file=/etc/thanos/objstore.yml"
+      - "--wait"
+      - "--retention.resolution-raw={{ thanos_compactor_retention_raw }}"
+      - "--retention.resolution-5m={{ thanos_compactor_retention_5m }}"
+      - "--retention.resolution-1h={{ thanos_compactor_retention_1h }}"
+      - "--compact.concurrency={{ thanos_compactor_concurrency }}"

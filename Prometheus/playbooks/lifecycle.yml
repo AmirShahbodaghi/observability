@@ -1,0 +1,70 @@
+---
+- name: Prometheus lifecycle
+  hosts: prometheus
+  become: true
+  gather_facts: false
+  tags: [prometheus]
+  tasks:
+    - ansible.builtin.include_role:
+        name: prometheus
+        tasks_from: lifecycle.yml
+
+- name: Thanos Sidecar lifecycle
+  hosts: thanos_sidecar
+  become: true
+  gather_facts: false
+  tags: [thanos_sidecar]
+  tasks:
+    - ansible.builtin.include_role:
+        name: thanos_sidecar
+        tasks_from: lifecycle.yml
+
+- name: Thanos Store lifecycle
+  hosts: thanos_store
+  become: true
+  gather_facts: false
+  tags: [thanos_store]
+  tasks:
+    - ansible.builtin.include_role:
+        name: thanos_store
+        tasks_from: lifecycle.yml
+
+- name: Thanos Compactor lifecycle
+  hosts: thanos_compactor
+  become: true
+  gather_facts: false
+  tags: [thanos_compactor]
+  tasks:
+    - ansible.builtin.include_role:
+        name: thanos_compactor
+        tasks_from: lifecycle.yml
+
+- name: Thanos Query lifecycle
+  hosts: thanos_query
+  become: true
+  gather_facts: false
+  tags: [thanos_query]
+  tasks:
+    - ansible.builtin.include_role:
+        name: thanos_query
+        tasks_from: lifecycle.yml
+
+- name: Grafana lifecycle
+  hosts: grafana
+  become: true
+  gather_facts: false
+  tags: [grafana]
+  tasks:
+    - ansible.builtin.include_role:
+        name: grafana
+        tasks_from: lifecycle.yml
+
+- name: Tempo lifecycle
+  hosts: tempo
+  become: true
+  gather_facts: false
+  tags: [tempo]
+  tasks:
+    - ansible.builtin.include_role:
+        name: tempo
+        tasks_from: lifecycle.yml

@@ -1,0 +1,27 @@
+apiVersion: 1
+datasources:
+  - name: {{ grafana_datasource_prometheus_name | default('Prometheus-HA') }}
+    uid: P5F3E870C62180F52
+    type: prometheus
+    access: proxy
+    orgId: 1
+    url: {{ grafana_datasource_prometheus_url }}
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: "{{ prometheus_scrape_interval | default('15s') }}"
+
+{% if tempo_enable | default(false) | bool %}
+  - name: {{ grafana_datasource_tempo_name | default('Tempo') }}
+    type: tempo
+    access: proxy
+    orgId: 1
+    url: {{ grafana_datasource_tempo_url }}
+    jsonData:
+      tracesToMetrics:
+        datasourceUid: "P5F3E870C62180F52"
+      serviceMap:
+        datasourceUid: "P5F3E870C62180F52"
+      nodeGraph:
+        enabled: true
+{% endif %}

@@ -1,0 +1,42 @@
+---
+- name: Clean monitoring services
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: Stop Prometheus
+      community.docker.docker_container:
+        name: "{{ prometheus_container_name | default('prometheus') }}"
+        state: absent
+      when: "'prometheus' in group_names"
+      ignore_errors: true
+
+    - name: Stop Thanos Sidecar
+      community.docker.docker_container:
+        name: "{{ thanos_sidecar_container_name | default('thanos-sidecar') }}"
+        state: absent
+      when: "'prometheus' in group_names"
+      ignore_errors: true
+
+    - name: Stop Thanos Query
+      community.docker.docker_container:
+        name: "{{ thanos_query_container_name | default('thanos-query') }}"
+        state: absent
+      when: "'thanos_query' in group_names"
+      ignore_errors: true
+
+    - name: Stop Grafana
+      community.docker.docker_container:
+        name: "{{ grafana_container_name | default('grafana') }}"
+        state: absent
+      when: "'grafana' in group_names"
+      ignore_errors: true
+
+    - name: Stop Tempo
+      community.docker.docker_container:
+        name: "{{ tempo_container_name | default('tempo') }}"
+        state: absent
+      when: "'tempo' in group_names"
+      ignore_errors: true

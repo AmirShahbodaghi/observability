@@ -1,0 +1,126 @@
+---
+# Global
+service_state: "started"
+service_action: "deploy"   # deploy | start | stop | restart | reset
+monitoring_network: "monitoring"
+container_registry: "pull-devops.tamin.ir"
+thanos_enable_objstore: true
+tempo_enable: true
+grafana_tracing_enabled: true
+
+# Prometheus  (local TSDB = 10d)
+prometheus_image: "{{ container_registry }}/prometheus/prometheus"
+prometheus_version: "v3.13.0"
+prometheus_container_name: "prometheus"
+prometheus_port: 9090
+prometheus_config_dir: "/opt/prometheus/etc/prometheus"
+prometheus_data_dir: "/opt/prometheus/var/lib/prometheus"
+prometheus_user: "65534:65534"
+prometheus_scrape_interval: "15s"
+prometheus_retention: "10d"
+prometheus_block_duration: "2h"
+prometheus_cluster_label: "prometheus-cluster"
+prometheus_external_url: "http://{{ ansible_host }}:{{ prometheus_port }}"
+
+# Thanos common
+thanos_image: "{{ container_registry }}/thanosio/thanos"
+thanos_version: "v0.42.4"
+thanos_user: "65534:65534"
+
+# Object storage (REQUIRED for 10d local / 30d S3)
+thanos_objstore_type: "S3"
+thanos_objstore_bucket: "thanos-metric"
+thanos_objstore_endpoint: "s3-devops.tamin.ir"
+thanos_objstore_access_key: "03198GHGT2H6LDE3LQEM"
+thanos_objstore_secret_key: "QCCDMGIDo1TxuUUkaoiNkZSsHHx2anB8HUoJrYxG"
+thanos_objstore_insecure: false
+
+# Thanos Sidecar  (same host as Prometheus, ships 2h blocks to S3)
+# Host 10904/10901 so Query can keep 10902 on etcd02
+thanos_sidecar_container_name: "thanos-sidecar"
+thanos_sidecar_image: "{{ thanos_image }}"
+thanos_sidecar_version: "{{ thanos_version }}"
+thanos_sidecar_http_port: 10904
+thanos_sidecar_grpc_port: 10901
+thanos_sidecar_http_container_port: 10902
+thanos_sidecar_grpc_container_port: 10901
+thanos_sidecar_config_dir: "/opt/thanos/etc/thanos"
+thanos_sidecar_data_dir: "/opt/thanos/var/lib/thanos"
+thanos_sidecar_prometheus_url: "http://{{ prometheus_container_name }}:{{ prometheus_port }}"
+thanos_sidecar_tsdb_path: "/prometheus"
+thanos_sidecar_shipper_upload_compacted: true
+
+# Thanos Query  (Grafana talks only to this)
+thanos_query_container_name: "thanos-query"
+thanos_query_image: "{{ thanos_image }}"
+thanos_query_version: "{{ thanos_version }}"
+thanos_query_http_port: 10902
+thanos_query_grpc_port: 10903
+thanos_query_http_container_port: 10902
+thanos_query_grpc_container_port: 10901
+thanos_query_http_address: "0.0.0.0:10902"
+thanos_query_grpc_address: "0.0.0.0:10901"
+thanos_query_replica_labels:
+  - "replica"
+thanos_query_auto_downsampling: true
+
+# Thanos Store Gateway  (S3 → StoreAPI for data older than local TSDB)
+thanos_store_container_name: "thanos-store"
+thanos_store_image: "{{ thanos_image }}"
+thanos_store_version: "{{ thanos_version }}"
+thanos_store_http_port: 10906
+thanos_store_grpc_port: 10905
+thanos_store_http_container_port: 10902
+thanos_store_grpc_container_port: 10901
+thanos_store_config_dir: "/opt/thanos-store/etc/thanos"
+thanos_store_data_dir: "/opt/thanos-store/var/lib/thanos"
+thanos_store_http_address: "0.0.0.0:10902"
+thanos_store_grpc_address: "0.0.0.0:10901"
+
+# Thanos Compactor  (singleton, enforces 30d on the bucket)
+thanos_compactor_container_name: "thanos-compact"
+thanos_compactor_image: "{{ thanos_image }}"
+thanos_compactor_version: "{{ thanos_version }}"
+thanos_compactor_http_port: 10908
+thanos_compactor_http_container_port: 10902
+thanos_compactor_config_dir: "/opt/thanos-compact/etc/thanos"
+thanos_compactor_data_dir: "/opt/thanos-compact/var/lib/thanos"
+thanos_compactor_retention_raw: "30d"
+thanos_compactor_retention_5m: "30d"
+thanos_compactor_retention_1h: "30d"
+thanos_compactor_concurrency: 1
+thanos_compactor_http_address: "0.0.0.0:10902"
+
+# Grafana
+grafana_image: "{{ container_registry }}/grafana/grafana"
+grafana_version: "13.0.8"
+grafana_container_name: "grafana"
+grafana_http_port: 3000
+grafana_admin_user: "admin"
+grafana_admin_password: "admin"
+grafana_user: "472:472"
+grafana_config_dir: "/opt/grafana/etc/grafana"
+grafana_data_dir: "/opt/grafana/var/lib/grafana"
+grafana_datasource_prometheus_name: "Prometheus-HA"
+grafana_datasource_prometheus_url: "http://{{ thanos_query_container_name }}:{{ thanos_query_http_container_port }}"
+grafana_datasource_tempo_name: "Tempo"
+grafana_datasource_tempo_url: "http://{{ hostvars[groups['tempo'][0]]['ansible_host'] }}:{{ tempo_http_port }}"
+
+# Tempo  (trace API: OTLP gRPC 4317, OTLP HTTP 4318, query 3200)
+tempo_image: "{{ container_registry }}/grafana/tempo"
+tempo_version: "3.0.3"
+tempo_container_name: "tempo"
+tempo_http_port: 3200
+tempo_otlp_grpc_port: 4317
+tempo_otlp_http_port: 4318
+tempo_config_dir: "/opt/tempo/etc/tempo"
+tempo_data_dir: "/opt/tempo/var/lib/tempo"
+tempo_user: "10001:10001"
+tempo_objstore_bucket: "tempo-metric"
+tempo_objstore_endpoint: "s3-devops.tamin.ir"
+tempo_objstore_access_key: "87Z8VZMGSUHC0QAB1AHN"
+tempo_objstore_secret_key: "3NXKX6vqBGpKCJAdWDJjSiVN5IvB91iXpcC7UCLC"
+tempo_objstore_insecure: true
+tempo_block_retention: "720h"   
+
+

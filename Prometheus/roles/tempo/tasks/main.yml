@@ -1,0 +1,46 @@
+---
+- name: Ensure monitoring network exists
+  community.docker.docker_network:
+    name: "{{ monitoring_network }}"
+    state: present
+
+- name: Ensure Tempo directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "10001"
+    group: "10001"
+    mode: "0755"
+  loop:
+    - "{{ tempo_config_dir }}"
+    - "{{ tempo_data_dir }}"
+    - "{{ tempo_data_dir }}/wal"
+    - "{{ tempo_data_dir }}/traces"
+
+- name: Deploy Tempo configuration
+  ansible.builtin.template:
+    src: tempo.yaml.j2
+    dest: "{{ tempo_config_dir }}/tempo.yaml"
+    owner: "10001"
+    group: "10001"
+    mode: "0644"
+  notify: Restart Tempo
+
+- name: Deploy Tempo container
+  community.docker.docker_container:
+    name: "{{ tempo_container_name }}"
+    image: "{{ tempo_image }}:{{ tempo_version }}"
+    user: "{{ tempo_user }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ monitoring_network }}"
+    published_ports:
+      - "{{ tempo_http_port }}:3200"
+      - "{{ tempo_otlp_grpc_port }}:4317"
+      - "{{ tempo_otlp_http_port }}:4318"
+    volumes:
+      - "{{ tempo_config_dir }}/tempo.yaml:/etc/tempo/tempo.yaml:ro"
+      - "{{ tempo_data_dir }}:/var/tempo:rw"
+    command:
+      - "-config.file=/etc/tempo/tempo.yaml"

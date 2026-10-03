@@ -1,0 +1,7 @@
+---
+- name: Restart Thanos Query
+  community.docker.docker_container:
+    name: "{{ thanos_query_container_name }}"
+    state: started
+    restart: true
+    

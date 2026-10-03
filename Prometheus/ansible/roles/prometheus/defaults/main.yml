@@ -1,3 +1,0 @@
----
-prometheus_image: "your-registery/prom/prometheus"
-prometheus_container_name: "prometheus"

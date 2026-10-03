@@ -1,0 +1,46 @@
+---
+- name: Ensure monitoring network exists
+  community.docker.docker_network:
+    name: "{{ monitoring_network }}"
+    state: present
+
+- name: Build Thanos Query command
+  ansible.builtin.set_fact:
+    thanos_query_cmd: "{{ _base + _replica + _sidecar + _store }}"
+  vars:
+    _base:
+      - query
+      - "--http-address={{ thanos_query_http_address }}"
+      - "--grpc-address={{ thanos_query_grpc_address }}"
+      - "{{ '--query.auto-downsampling' if thanos_query_auto_downsampling | default(true) | bool else '--no-query.auto-downsampling' }}"
+    _replica: "{{ thanos_query_replica_labels | map('regex_replace', '^(.*)$', '--query.replica-label=\\1') | list }}"
+    _sidecar: "{{ groups['thanos_sidecar'] | map('extract', hostvars, 'ansible_host') | map('regex_replace', '^(.*)$', '--endpoint=\\1:' + (thanos_sidecar_grpc_port | string)) | list }}"
+    _store: "{{ groups['thanos_store'] | map('extract', hostvars, 'ansible_host') | map('regex_replace', '^(.*)$', '--endpoint=\\1:' + (thanos_store_grpc_port | string)) | list if thanos_enable_objstore | bool else [] }}"
+
+- name: Show Thanos Query command
+  ansible.builtin.debug:
+    var: thanos_query_cmd
+
+- name: Deploy Thanos Query
+  community.docker.docker_container:
+    name: "{{ thanos_query_container_name }}"
+    image: "{{ thanos_query_image }}:{{ thanos_query_version }}"
+    user: "{{ thanos_user | default('65534:65534') }}"
+    state: started
+    restart_policy: unless-stopped
+    networks:
+      - name: "{{ monitoring_network }}"
+    published_ports:
+      - "{{ thanos_query_http_port }}:{{ thanos_query_http_container_port }}"
+      - "{{ thanos_query_grpc_port }}:{{ thanos_query_grpc_container_port }}"
+    command: "{{ thanos_query_cmd }}"
+
+- name: Wait until Thanos Query is healthy
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ thanos_query_http_port }}/-/healthy"
+    method: GET
+    status_code: 200
+  register: thanos_query_health
+  retries: 30
+  delay: 2
+  until: thanos_query_health.status | default(0) == 200
