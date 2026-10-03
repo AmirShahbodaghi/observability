@@ -3,7 +3,7 @@
 service_state: "started"
 service_action: "deploy"   # deploy | start | stop | restart | reset
 monitoring_network: "monitoring"
-container_registry: "pull-devops.tamin.ir"
+container_registry: "pull-devops.test.ir"
 thanos_enable_objstore: true
 tempo_enable: true
 grafana_tracing_enabled: true
@@ -30,7 +30,7 @@ thanos_user: "65534:65534"
 # Object storage (REQUIRED for 10d local / 30d S3)
 thanos_objstore_type: "S3"
 thanos_objstore_bucket: "thanos-metric"
-thanos_objstore_endpoint: "s3-devops.tamin.ir"
+thanos_objstore_endpoint: "s3-devops.test.ir"
 thanos_objstore_access_key: "03198GHGT2H6LDE3LQEM"
 thanos_objstore_secret_key: "QCCDMGIDo1TxuUUkaoiNkZSsHHx2anB8HUoJrYxG"
 thanos_objstore_insecure: false
@@ -117,7 +117,7 @@ tempo_config_dir: "/opt/tempo/etc/tempo"
 tempo_data_dir: "/opt/tempo/var/lib/tempo"
 tempo_user: "10001:10001"
 tempo_objstore_bucket: "tempo-metric"
-tempo_objstore_endpoint: "s3-devops.tamin.ir"
+tempo_objstore_endpoint: "s3-devops.test.ir"
 tempo_objstore_access_key: "87Z8VZMGSUHC0QAB1AHN"
 tempo_objstore_secret_key: "3NXKX6vqBGpKCJAdWDJjSiVN5IvB91iXpcC7UCLC"
 tempo_objstore_insecure: true

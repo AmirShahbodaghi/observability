@@ -147,7 +147,7 @@ grafana_tracing_enabled: false
 prometheus_retention: "10d"
 
 thanos_objstore_bucket: "thanos-metric"
-thanos_objstore_endpoint: "s3-devops.tamin.ir"
+thanos_objstore_endpoint: "s3-devops.test.ir"
 thanos_objstore_access_key: "CHANGE_ME"
 thanos_objstore_secret_key: "CHANGE_ME"
 thanos_objstore_insecure: true

@@ -2,7 +2,7 @@
 set -e
 
 VENV_PATH="$HOME/.venv/prometheus"
-GALAXY_SERVER="https://reg-devops.tamin.ir/repository/galaxy.ansible.com/"
+GALAXY_SERVER="https://reg-devops.test.ir/repository/galaxy.ansible.com/"
 
 echo "==> Creating virtual environment at $VENV_PATH..."
 python3.13 -m venv "$VENV_PATH"
