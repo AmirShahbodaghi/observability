@@ -2,7 +2,13 @@ prometheusSelectorLabels: &promLabels
   release: kube-prometheus-stack  
 
 releaseLabel: false
-replicas: 2   
+replicas: 2 
+
+image:
+  registry: pull-devops.example.ir
+  repository: prometheus/blackbox-exporter
+  tag: "v0.29.0"             
+  pullPolicy: IfNotPresent
 
 extraArgs:
   - --history.limit=1000
