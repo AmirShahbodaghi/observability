@@ -1,0 +1,146 @@
+prometheusSelectorLabels: &promLabels
+  release: kube-prometheus-stack  
+
+releaseLabel: false
+replicas: 2   
+
+extraArgs:
+  - --history.limit=1000
+  - --log.level=info
+
+extraEnv:
+  - name: GOMAXPROCS
+    valueFrom:
+      resourceFieldRef:
+        resource: limits.cpu
+        divisor: "1"
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+    add: ["NET_RAW"]
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "5"
+    memory: 10Gi
+
+configReloader:
+  enabled: true
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "5"
+      memory: 10Gi
+
+service:
+  type: ClusterIP
+  port: 9115
+
+config:
+  modules:
+    http_2xx:
+      prober: http
+      timeout: 10s
+      http:
+        valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+        follow_redirects: true
+        preferred_ip_protocol: ip4
+        valid_status_codes: []          
+        ip_protocol_fallback: true
+    http_2xx_insecure:                 
+      prober: http
+      timeout: 10s
+      http:
+        valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+        follow_redirects: true
+        preferred_ip_protocol: ip4
+        tls_config:
+          insecure_skip_verify: true
+    http_401:                           
+      prober: http
+      timeout: 10s
+      http:
+        valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+        follow_redirects: false
+        valid_status_codes: [401, 403]
+    tcp_connect:
+      prober: tcp
+      timeout: 5s
+    icmp:
+      prober: icmp
+      timeout: 5s
+      icmp:
+        preferred_ip_protocol: ip4
+    dns_udp:
+      prober: dns
+      timeout: 5s
+      dns:
+        query_name: kubernetes.default.svc.cluster.local
+        query_type: A
+        transport_protocol: udp
+        preferred_ip_protocol: ip4
+        validate_answer_rrs:
+          fail_if_matches_regexp: []
+          fail_if_not_matches_regexp: [".+"]
+
+serviceMonitor:
+  enabled: true
+  scheme: http
+  path: /probe
+  selfMonitor:
+    enabled: true
+    labels: *promLabels
+    path: /metrics
+    interval: 15s
+    scrapeTimeout: 10s
+  defaults:
+    labels: *promLabels
+    interval: 30s
+    scrapeTimeout: 15s          
+    honorTimestamps: true
+    module: http_2xx
+  targets:
+    
+    - name: example-public
+      url: https://example.com
+      module: http_2xx
+
+prometheusRule:
+  enabled: true
+  additionalLabels: *promLabels
+  rules:
+    - alert: BlackboxProbeFailed
+      expr: probe_success == 0
+      for: 3m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Probe failed for {{ $labels.instance }}"
+        description: "Blackbox module {{ $labels.module }} against {{ $labels.instance }} has been failing for 3 minutes."
+    - alert: BlackboxProbeSlow
+      expr: probe_duration_seconds > 3
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Probe slower than 3s for {{ $labels.instance }}"
+        description: "Duration is {{ $value }}s."
+    - alert: BlackboxSslCertExpiring
+      expr: (probe_ssl_earliest_cert_expiry - time()) < 14 * 24 * 3600
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "TLS cert expires within 14 days ({{ $labels.instance }})"
+        description: "Earliest cert expiry is in {{ $value | humanizeDuration }}."
