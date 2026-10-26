@@ -1,0 +1,102 @@
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+live_store:
+  max_trace_idle: 10s
+  max_block_duration: 5m
+
+querier:
+  frontend_worker:
+    frontend_address: 127.0.0.1:9095
+
+backend_scheduler:
+  provider:
+    compaction:
+      compaction:
+        compaction_window: 1h
+        block_retention: {{ tempo_block_retention }}
+        compacted_block_retention: 1h
+
+storage:
+  trace:
+    backend: s3
+    wal:
+      path: /var/tempo/wal
+    s3:
+      bucket: tempo-metric
+      endpoint: "{{ tempo_objstore_endpoint }}"
+      region: us-east-1
+      access_key: "{{ tempo_objstore_access_key }}"
+      secret_key: "{{ tempo_objstore_secret_key }}"
+      insecure: false            
+      forcepathstyle: true      
+      bucket_lookup_type: 2     
+    local:
+      path: /var/tempo/traces
+
+metrics_generator:
+  registry:
+    collection_interval: 15s
+    external_labels:
+      source: tempo
+      cluster: "{{ prometheus_cluster_label | default('prometheus-cluster') }}"
+
+  storage:
+    path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://{{ hostvars[groups['prometheus'][0]]['ansible_host'] }}:{{ prometheus_port }}/api/v1/write
+        send_exemplars: true
+
+  processor:
+    service_graphs:
+      max_items: 10000
+      wait: 10s
+      workers: 10
+      dimensions:
+        - http.method
+        - http.status_code
+        - service.namespace
+        - k8s.namespace.name
+        - k8s.deployment.name
+        - k8s.pod.name
+        - db.system
+        - messaging.system
+      enable_client_server_prefix: true
+      peer_attributes:
+        - peer.service
+        - db.name
+        - db.system
+        - net.peer.name
+        - server.address
+
+    span_metrics:
+      dimensions:
+        - http.method
+        - http.status_code
+        - service.namespace
+        - k8s.namespace.name
+        - k8s.deployment.name
+
+overrides:
+  defaults:
+    compaction:
+      block_retention: {{ tempo_block_retention }}
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics
+
+usage_report:
+  reporting_enabled: false

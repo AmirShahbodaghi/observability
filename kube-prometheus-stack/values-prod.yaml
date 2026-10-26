@@ -1,0 +1,82 @@
+# Disable built-in Grafana and Alertmanager
+grafana:
+  enabled: false
+
+alertmanager:
+  enabled: false
+
+# Disable built-in exporter sub-charts to save CPU and RAM
+nodeExporter:
+  enabled: false
+
+prometheus-node-exporter:
+  enabled: false
+
+kubeStateMetrics:
+  enabled: false
+
+kube-state-metrics:
+  enabled: false
+
+# Disable default K8s component scraping & rules
+defaultRules:
+  create: false
+
+kubeApiServer:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+# Minimal Prometheus configuration with Ingress
+prometheus:
+  enabled: true
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx          # note: ingressClassName (not className)
+    annotations: {}
+      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - pk-devops.example.ir
+    paths:
+      - /
+    pathType: Prefix
+
+  prometheusSpec:
+    retention: 1d
+
+    # Important: discover ServiceMonitor / PodMonitor from ALL namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    podMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+
+    # Remote write – metrics are pushed out of the cluster in near real-time
+    remoteWrite:
+      - url: "http://IP:9090/api/v1/write"
+        # Optional but recommended for reliability
+        queueConfig:
+          capacity: 10000
+          maxShards: 50
+          maxSamplesPerSend: 5000
+          batchSendDeadline: 5s
+      - url: "http://IP:9090/api/v1/write"
+        queueConfig:
+          capacity: 10000
+          maxShards: 50
+          maxSamplesPerSend: 5000
+          batchSendDeadline: 5s
+
+          

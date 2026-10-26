@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: prometheus
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

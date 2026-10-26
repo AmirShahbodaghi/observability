@@ -1,0 +1,56 @@
+replicaCount: 2
+
+manager:
+  image:
+    repository: pull-devops.example.ir/open-telemetry/opentelemetry-operator/opentelemetry-operator
+    tag: "0.160.0"                         
+    imagePullPolicy: IfNotPresent
+
+  collectorImage:
+    repository: pull-devops.example.ir/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s
+    tag: "0.160.0"
+
+  autoInstrumentationImage:
+    java:
+      repository: ""                 
+      tag: ""
+    nodejs:
+      repository: ""
+      tag: ""
+    python:
+      repository: ""
+      tag: ""
+    dotnet:
+      repository: "ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet"
+      tag: "1.9.0"                  
+    apacheHttpd:
+      repository: ""
+      tag: ""
+    nginx:
+      repository: ""
+      tag: ""
+
+  env:
+    ENABLE_WEBHOOKS: "true"
+
+admissionWebhooks:
+  create: true
+  failurePolicy: Fail
+  certManager:
+    enabled: false
+  autoGenerateCert:
+    enabled: true
+    recreate: true
+    certPeriodDays: 365
+
+crds:
+  create: true
+
+role:
+  create: true
+
+clusterRole:
+  create: true
+
+nodeSelector:
+  kubernetes.io/os: linux

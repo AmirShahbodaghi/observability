@@ -1,0 +1,6 @@
+- hosts: all
+  become: true
+  roles:
+    - node_exporter
+  vars:
+    node_exporter_version: "1.12.1"

@@ -1,0 +1,91 @@
+# Disable unnecessary components
+grafana:
+  enabled: false
+alertmanager:
+  enabled: false
+nodeExporter:
+  enabled: false
+prometheus-node-exporter:
+  enabled: false
+kubeStateMetrics:
+  enabled: false
+kube-state-metrics:
+  enabled: false
+defaultRules:
+  create: false
+kubeApiServer:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# CRDs (Prometheus Operator CRDs)
+crds:
+  enabled: true
+  upgradeJob:
+    enabled: false          # set true only if you need force-upgrade of CRDs
+    forceConflicts: true
+    image:
+      busybox:
+        registry: pull-devops.example.ir
+        repository: busybox
+        tag: "latest"
+        pullPolicy: IfNotPresent
+      kubectl:
+        registry: pull-devops.example.ir
+        repository: kubectl
+        tag: ""               # defaults to cluster Kubernetes version
+        pullPolicy: IfNotPresent
+
+prometheus:
+  enabled: true
+
+  # Disable classic Ingress
+  ingress:
+    enabled: false
+
+  # Gateway API HTTPRoute (correct key for kube-prometheus-stack)
+  route:
+    main:
+      enabled: true
+      hostnames:
+        - "pk-prod-devops.example.ir"          # change to your hostname
+      parentRefs:
+        - name: gateway
+          namespace: envoy-gateway-system
+      # optional – matches default is PathPrefix /
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+  prometheusSpec:
+    retention: 1d
+
+    # Discover ServiceMonitor / PodMonitor in ALL namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    podMonitorSelector: {}
+
+    # Real-time remote write (metrics leave the cluster immediately)
+    remoteWrite:
+      - url: "http://IP:9090/api/v1/write"
+        queueConfig:
+          capacity: 10000
+          maxSamplesPerSend: 5000
+          maxShards: 10
+          minShards: 1
+          batchSendDeadline: 5s
+      - url: "http://IP:9090/api/v1/write"
+        queueConfig:
+          capacity: 10000
+          maxSamplesPerSend: 5000
+          maxShards: 10
+          minShards: 1
+          batchSendDeadline: 5s

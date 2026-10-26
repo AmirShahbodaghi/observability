@@ -1,0 +1,226 @@
+global:
+  image:
+    registry: ""
+    pullSecrets: []
+
+enabled: true
+
+image:
+  registry: "pull-devops.example.ir"
+  repository: grafana/beyla
+  tag: null
+  digest: null
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+
+rbac:
+  create: true
+  extraClusterRoleRules:
+    - apiGroups: ["config.openshift.io"]
+      resources: ["infrastructures"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["configmaps"]
+      verbs: ["get", "list", "watch"]
+
+injector:
+  enabled: false
+
+serviceAccount:
+  create: true
+  automount: true
+  labels: {}
+  annotations: {}
+  name: ""
+
+podSecurityContext: {}
+
+privileged: true
+
+contextPropagation:
+  enabled: true
+
+extraCapabilities: []
+
+securityContext:
+  privileged: true
+
+priorityClassName: ""
+
+service:
+  enabled: true
+  type: NodePort
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+  labels: {}
+  clusterIP: ""
+  port: 80
+  targetPort: 9090
+  nodePort: 30090
+  portName: metrics
+  appProtocol: ""
+  internalMetrics:
+    port: 8080
+    targetPort: null
+    portName: int-metrics
+    appProtocol: ""
+
+resources:
+  limits:
+    cpu: 4000m
+    memory: 4096Mi
+  requests:
+    cpu: 3000m
+    memory: 4096Mi
+
+updateStrategy:
+  type: RollingUpdate
+
+minReadySeconds: 0
+
+volumes: []
+volumeMounts: []
+nodeSelector: {}
+
+tolerations:
+  - operator: Exists
+
+affinity: {}
+
+podAnnotations: {}
+podLabels: {}
+
+dnsPolicy: ClusterFirstWithHostNet
+
+config:
+  skipConfigMapCheck: false
+  create: true
+
+  data:
+    network:
+      enable: true
+      direction: "both"
+      cidrs:
+        - "0.0.0.0/0"
+
+    attributes:
+      kubernetes:
+        enable: true
+        meta_restrict_local_node: false
+        resource_attributes:
+          - k8s.cluster.name
+          - k8s.namespace.name
+          - k8s.deployment.name
+          - k8s.pod.name
+          - k8s.node.name
+          - service.name
+          - service.namespace
+
+      rename_unresolved_hosts: "external"
+      rename_unresolved_hosts_outgoing: "external-out"
+      rename_unresolved_hosts_incoming: "external-in"      
+
+    discovery:
+      services:
+        - k8s_namespace: ".*"
+      exclude_services:
+        - k8s_namespace: "^(kube-system|monitoring|grafana)$"
+
+      exclude_otel_instrumented_services: false  
+
+    metrics:
+      features:
+        - application
+        - application_http
+        - application_process
+        - application_service_graph   
+        - application_span           
+        - network
+
+    routes:
+      unmatched: heuristic    
+
+    prometheus_export:
+      port: 9090
+      path: /metrics
+
+    otel_traces_export:
+      endpoint: "http://IP:4317"
+      protocol: grpc
+      insecure_skip_verify: true
+      instrumentations:
+        - http
+        - grpc
+        - sql
+        - redis
+        - kafka
+        - mongo
+
+    ebpf:
+      track_request_headers: true
+      context_propagation: all
+
+env: {}
+envValueFrom: {}
+
+preset: application
+
+serviceMonitor:
+  enabled: true
+  additionalLabels: {}          
+  annotations: {}
+  metrics:
+    endpoint:
+      interval: 15s
+      path: /metrics
+  internalMetrics:
+    endpoint:
+      interval: 30s
+  jobLabel: "beyla"
+
+k8sCache:
+  replicas: 1
+  profilePort: 0
+  env: {}
+  envValueFrom: {}
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+    requests:
+      cpu: 1000m
+      memory: 1024Mi
+  
+  image:
+    registry: "pull-devops.example.ir"
+    repository: grafana/beyla-k8s-cache
+    tag: null
+    digest: null
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+  
+  service:
+    name: beyla-k8s-cache
+    port: 50055
+    annotations: {}
+    labels: {}
+  
+  internalMetrics:
+    port: 0
+    path: /metrics
+    portName: metrics
+  
+  annotations: {}
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+extraObjects: []

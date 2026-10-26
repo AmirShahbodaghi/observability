@@ -1,0 +1,3 @@
+---
+prometheus_image: "pull-devops.example.ir/prom/prometheus"
+prometheus_container_name: "prometheus"

@@ -1,0 +1,194 @@
+{{ ansible_managed | comment }}
+global:
+  scrape_interval: {{ prometheus_scrape_interval | default('15s') }}
+  evaluation_interval: {{ prometheus_scrape_interval | default('15s') }}
+  external_labels:
+    cluster: "{{ prometheus_cluster_label | default('prometheus-cluster') }}"
+    replica: "{{ replica_name | default(inventory_hostname) }}"
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: {{ [prometheus_container_name ~ ':9090'] | to_json }}
+        labels:
+          instance: "{{ replica_name | default(inventory_hostname) }}"
+
+  - job_name: thanos-sidecar
+    static_configs:
+      - targets: {{ [thanos_sidecar_container_name ~ ':' ~ (thanos_sidecar_http_container_port | string)] | to_json }}
+
+{% set _query = [] %}
+{% for h in groups['thanos_query'] | default([]) %}
+{%   set _ = _query.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (thanos_query_http_port | string)) %}
+{% endfor %}
+{% if _query | length > 0 %}
+  - job_name: thanos-query
+    static_configs:
+      - targets: {{ _query | to_json }}
+{% endif %}
+
+{% set _store = [] %}
+{% for h in groups['thanos_store'] | default([]) %}
+{%   set _ = _store.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (thanos_store_http_port | string)) %}
+{% endfor %}
+{% if _store | length > 0 %}
+  - job_name: thanos-store
+    static_configs:
+      - targets: {{ _store | to_json }}
+{% endif %}
+
+{% set _compact = [] %}
+{% for h in groups['thanos_compactor'] | default([]) %}
+{%   set _ = _compact.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (thanos_compactor_http_port | string)) %}
+{% endfor %}
+{% if _compact | length > 0 %}
+  - job_name: thanos-compact
+    static_configs:
+      - targets: {{ _compact | to_json }}
+{% endif %}
+
+{% set _grafana = [] %}
+{% for h in groups['grafana'] | default([]) %}
+{%   set _ = _grafana.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (grafana_http_port | string)) %}
+{% endfor %}
+{% if _grafana | length > 0 %}
+  - job_name: grafana
+    metrics_path: /metrics
+    static_configs:
+      - targets: {{ _grafana | to_json }}
+{% endif %}
+
+{% set _tempo = [] %}
+{% for h in groups['tempo'] | default([]) %}
+{%   set _ = _tempo.append((hostvars[h]['ansible_host'] | default(h)) ~ ':' ~ (tempo_http_port | string)) %}
+{% endfor %}
+{% if _tempo | length > 0 %}
+  - job_name: tempo
+    static_configs:
+      - targets: {{ _tempo | to_json }}
+{% endif %}
+
+{# Extra jobs: define prometheus_additional_scrape_jobs in all.yml #}
+{% for job in prometheus_additional_scrape_jobs | default([]) %}
+  - job_name: "{{ job.job_name }}"
+    metrics_path: "{{ job.metrics_path | default('/metrics') }}"
+    scheme: "{{ job.scheme | default('http') }}"
+{% if job.scrape_interval is defined %}
+    scrape_interval: {{ job.scrape_interval }}
+{% endif %}
+    static_configs:
+      - targets: {{ job.targets | to_json }}
+{% if job.labels is defined %}
+        labels:
+{% for k, v in job.labels.items() %}
+          {{ k }}: "{{ v }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+  - job_name: file-sd
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/file_sd/*.yml
+        refresh_interval: 5m
+
+  - job_name: "node-exporters"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["IP:9100"]
+        labels: {name: "po-nfr"}
+
+  - job_name: 'gitlab-workhorse'
+    static_configs:
+      - targets:
+        - "IP:9168"
+
+  - job_name: 'gitlab-runners'
+    static_configs:
+      - targets:
+        - "IP:9252"
+        - "IP:9253"
+        - "IP:9254"
+
+  - job_name: 'gitlab-pipeline'
+    static_configs:
+      - targets:
+        - "IP:8080"
+
+  - job_name: 'haproxy'
+    static_configs:
+      - targets:
+        - "IP:8404"
+        - "IP:8404"
+
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ["IP:7308"]
+        labels: {name: "Darman-n1"}
+    relabel_configs:
+      - source_labels: [name]
+        target_label: instance
+
+  - job_name: "nexus-repository-manager"
+    metrics_path: /service/rest/metrics/prometheus
+    static_configs:
+      - targets: ["IP:8071"]
+        labels: {name: "reg7"}
+      - targets: ["IP:8081"]
+        labels: {name: "reg8"}
+      - targets: ["IP:8091"]
+        labels: {name: "reg9"}
+    relabel_configs:
+      - source_labels: [name]
+        target_label: instance
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/nexus-password
+
+  - job_name: "k8s-node-exporter-prod"
+    static_configs:
+      - targets: ["IP:9100"]
+        labels: {name: "opt_master1"}
+
+    relabel_configs:
+      - source_labels: [name]
+        target_label: instance
+
+  - job_name: "kube-state-metrics-prod"
+    static_configs:
+      - targets:
+        - "IP:30180"
+
+  - job_name: "k8s-cadvisor-prod"
+    scheme: https
+    metrics_path: /metrics/cadvisor
+    tls_config:
+      insecure_skip_verify: true
+    bearer_token_file: /etc/prometheus/pk8s-token.token
+    static_configs:
+      - targets:
+        - "IP:10250"
+
+  - job_name: "beyla-prod"
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+        - "IP:30090"
+
+  - job_name: "ceph_exporter"
+    honor_labels: true
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["IP:9283"]
+        labels: {name: "ceph-mng1",ceph-cluster: "ceph-cluster"}
+      - targets: ["IP:9283"]
+        labels: {name: "ceph-mng2",ceph-cluster: "ceph-cluster"}
+      - targets: ["IP:9283"]
+        labels: {name: "ceph-mng3",ceph-cluster: "ceph-cluster"}
+    relabel_configs:
+      - source_labels: [name]
+        target_label: instance
+        

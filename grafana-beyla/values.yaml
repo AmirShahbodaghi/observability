@@ -1,0 +1,159 @@
+global:
+  image:
+    registry: ""
+    pullSecrets: []
+
+enabled: true
+
+image:
+  registry: "pull-devops.example.ir"
+  repository: grafana/beyla
+  tag: null
+  digest: null
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+namespaceOverride: ""
+
+rbac:
+  create: true
+  extraClusterRoleRules: []
+
+injector:
+  enabled: false
+
+serviceAccount:
+  create: true
+  automount: true
+  labels: {}
+  annotations: {}
+  name: ""
+
+podSecurityContext: {}
+
+privileged: true
+
+contextPropagation:
+  enabled: true
+
+extraCapabilities: []
+
+securityContext:
+  privileged: true
+
+priorityClassName: ""
+
+service:
+  enabled: false
+  type: ClusterIP
+  annotations: {}
+  labels: {}
+  clusterIP: ""
+  loadBalancerIP: ""
+  loadBalancerClass: ""
+  loadBalancerSourceRanges: []
+  port: 80
+  targetPort: null
+  portName: metrics
+  appProtocol: ""
+  internalMetrics:
+    port: 8080
+    targetPort: null
+    portName: int-metrics
+    appProtocol: ""
+
+resources: {}
+
+updateStrategy:
+  type: RollingUpdate
+
+minReadySeconds: 0
+
+volumes: []
+
+volumeMounts: []
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+podAnnotations: {}
+
+podLabels: {}
+
+dnsPolicy: ClusterFirstWithHostNet
+
+config:
+  skipConfigMapCheck: false
+  create: true
+  name: ""
+  checksum: ""
+  data:
+    attributes:
+      kubernetes:
+        enable: true
+    filter:
+      network:
+        k8s_dst_owner_name:
+          not_match: '{kube*,*jaeger-agent*,*prometheus*,*promtail*,*grafana-agent*}'
+        k8s_src_owner_name:
+          not_match: '{kube*,*jaeger-agent*,*prometheus*,*promtail*,*grafana-agent*}'
+    prometheus_export:
+      port: 9090
+      path: /metrics
+
+env: {}
+
+envValueFrom: {}
+
+preset: application
+
+serviceMonitor:
+  enabled: false
+  additionalLabels: {}
+  annotations: {}
+  metrics:
+    endpoint:
+      interval: 15s
+  internalMetrics:
+    endpoint:
+      interval: 15s
+  jobLabel: ""
+
+k8sCache:
+  replicas: 0
+  profilePort: 0
+  env: {}
+  envValueFrom: {}
+  resources: {}
+  image:
+    registry: "pull-devops.example.ir"
+    repository: grafana/beyla-k8s-cache
+    tag: null
+    digest: null
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+  service:
+    name: beyla-k8s-cache
+    port: 50055
+    annotations: {}
+    labels: {}
+  internalMetrics:
+    port: 0
+    path: /metrics
+    portName: metrics
+  annotations: {}
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+extraObjects: []
+
+
